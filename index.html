@@ -1,214 +1,225 @@
-<script>
-    /* LK's FORMATION - CORE SYSTEM V6.2 
-       Optimisation 2026 : Validation sémantique et relances client
-    */
-    const Manager = {
-        scenarios: [],
-        // Dictionnaire de synonymes pour une validation flexible
-        lexique: {
-            accueil: ["bonjour", "bienvenue", "enchanté", "service", "lk", "aider", "écoute"],
-            empathie: ["comprends", "navré", "désolé", "excuse", "regrette", "entends", "rassurez"],
-            action: ["vérifie", "dossier", "regarde", "instant", "attente", "recherche", "consulte"],
-            resolution: ["trouvé", "solution", "parce que", "expliquer", "voici", "résolu"],
-            cloture: ["autre", "besoin", "aidé", "revoir", "journée", "merci"]
-        },
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LK's Formation | Plateforme Certifiante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .step-active { border-left: 4px solid #3b82f6; background: #eff6ff; animation: pulse-border 2s infinite; }
+        @keyframes pulse-border { 0%, 100% { border-left-color: #3b82f6; } 50% { border-left-color: #93c5fd; } }
+        .bubble { position: relative; max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 0.9rem; margin-bottom: 8px; }
+        .bubble-client { background: #f1f5f9; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .bubble-agent { background: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bubble-system { background: #fff7ed; color: #9a3412; align-self: center; font-size: 0.75rem; border: 1px solid #ffedd5; }
+        #call-log::-webkit-scrollbar { width: 5px; }
+        #call-log::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
 
-        generate() {
-            const categories = [
-                {t: "Support FAI", b: "Vérifier la ligne ADSL", c: "Mécontent - Coupure", group: "accueil"},
-                {t: "E-Commerce", b: "Statut de livraison Colis", c: "Urgent - Anniversaire", group: "action"},
-                {t: "Assurance", b: "Sinistre Automobile", c: "Stressé - Accident", group: "empathie"},
-                {t: "Soutien Médical", b: "Prise de RDV IRM", c: "Patient inquiet", group: "resolution"}
-            ];
-            for(let i=1; i<=40; i++){
-                const cat = categories[i % 4];
-                this.scenarios.push({
-                    id: i,
-                    title: `MODULE ${i} : ${cat.t}`,
-                    type: i % 2 === 0 ? "IN" : "OUT",
-                    crm: `<b>CLIENT :</b> M. ${['Rakoto','Andria','Razafy','Silva'][i%4]}<br><b>CONTEXTE :</b> ${cat.c}<br><b>HISTORIQUE :</b> Contact régulier.`,
-                    bo: { ref: `LK-${1000+i}`, info: cat.b, detail: "Priorité Haute" },
-                    steps: [
-                        { l: "Ouverture Pro", k: this.lexique.accueil, h: "Saluez le client et nommez l'entreprise.", r: "Oui bonjour... je vous appelle car j'ai un gros souci." },
-                        { l: "Empathie Active", k: this.lexique.empathie, h: "Montrez au client que vous comprenez son problème.", r: "C'est gentil, mais mon dossier " + (1000+i) + " n'avance pas." },
-                        { l: "Action Métier", k: this.lexique.action, h: "Dites au client que vous allez consulter son dossier.", r: "D'accord, je vous laisse regarder." },
-                        { l: "Résolution", k: this.lexique.resolution, h: "Expliquez la solution en utilisant les données du BO.", r: "Ah enfin une réponse claire !" },
-                        { l: "Pre-Closing", k: this.lexique.cloture, h: "Demandez si vous pouvez aider pour autre chose.", r: "Non c'est tout, merci beaucoup." }
-                    ]
-                });
-            }
-        },
-        loadScenario() {
-            const s = this.scenarios.find(x => x.id == document.getElementById('scSelect').value);
-            document.getElementById('crm-content').innerHTML = s.crm;
-            document.getElementById('module-goal').innerText = `Maîtrise du flux : ${s.title}`;
-            document.getElementById('bo-content').innerHTML = `
-                <div class="bg-slate-100 p-4 rounded-xl text-xs space-y-2 border border-slate-200">
-                    <div class="flex justify-between"><b>REF:</b> <span>${s.bo.ref}</span></div>
-                    <div class="flex justify-between"><b>ACTION:</b> <span>${s.bo.info}</span></div>
-                    <div class="flex justify-between font-bold text-blue-600"><span>${s.bo.detail}</span></div>
-                </div>`;
-            Core.reset();
-        }
-    };
+    <nav class="h-16 bg-slate-900 flex items-center justify-between px-8 shadow-2xl z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white">LK</div>
+            <h1 class="text-white font-bold tracking-tight text-lg">LK's FORMATION <span class="text-blue-400 text-xs ml-2 font-normal">v6.2 PRO</span></h1>
+        </div>
+        <div class="flex gap-8">
+            <div class="text-center"><p class="text-[10px] text-slate-400 font-bold uppercase">Chrono</p><span id="timer" class="text-blue-400 font-mono text-xl">00:00</span></div>
+            <div class="text-center border-x border-slate-700 px-8"><p class="text-[10px] text-slate-400 font-bold uppercase">Qualité</p><span id="score-val" class="text-emerald-400 font-mono text-xl">100%</span></div>
+            <div class="text-center"><p class="text-[10px] text-slate-400 font-bold uppercase">Alertes</p><span id="err-val" class="text-rose-500 font-mono text-xl">0</span></div>
+        </div>
+    </nav>
 
-    const Core = {
-        state: { step: 0, err: 0, score: 100, active: false, timer: 0, timerInt: null, checks: {}, lastInput: 0 },
-        rec: null,
-        synth: window.speechSynthesis,
-
-        init() {
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if(!SR) return alert("Navigateur non compatible");
-            this.rec = new SR();
-            this.rec.lang = 'fr-FR'; this.rec.continuous = true; this.rec.interimResults = true;
-            this.rec.onresult = (e) => {
-                for (let i = e.resultIndex; i < e.results.length; ++i) {
-                    if (e.results[i].isFinal) this.validate(e.results[i][0].transcript);
-                    else document.getElementById('transcription-preview').innerText = e.results[i][0].transcript;
-                }
-            };
-        },
-
-        start() {
-            this.state.active = true;
-            this.state.lastInput = 0;
-            document.getElementById('btn-text').innerText = "RACCROCHER (TERMINER)";
-            document.getElementById('mainBtn').className = "px-8 py-4 bg-rose-500 text-white font-extrabold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2";
-            document.getElementById('voice-indicator').classList.replace('bg-slate-300', 'bg-emerald-500');
-            document.getElementById('voice-indicator').classList.add('animate-ping');
-            
-            this.rec.start();
-            this.state.timerInt = setInterval(() => {
-                this.state.timer++;
-                this.state.lastInput++;
-                this.updateKPIs();
-                this.checkSLA(); // Vérification des silences client
-            }, 1000);
-
-            const s = Manager.scenarios.find(x => x.id == document.getElementById('scSelect').value);
-            this.updateWorkflow(s);
-            if(s.type === "IN") {
-                setTimeout(() => {
-                    this.addMsg('client', "Driiiing... Driiiing...");
-                    this.speak("Appel entrant. Veuillez décrocher.");
-                }, 500);
-            }
-        },
-
-        checkSLA() {
-            // Si l'agent ne parle pas pendant 15 secondes, le client s'impatiente
-            if(this.state.lastInput === 15) {
-                const relances = ["Allô ? Je ne vous entends plus.", "Vous êtes toujours là ?", "Monsieur ? Madame ?"];
-                const r = relances[Math.floor(Math.random() * relances.length)];
-                this.addMsg('client', r);
-                this.speak(r);
-                this.state.score = Math.max(0, this.state.score - 5);
-            }
-        },
-
-        validate(text) {
-            this.state.lastInput = 0; // Reset du timer de silence
-            this.addMsg('agent', text);
-            const s = Manager.scenarios.find(x => x.id == document.getElementById('scSelect').value);
-            const step = s.steps[this.state.step];
-            const cleanText = text.toLowerCase();
-            
-            // Validation par mot-clé dans la liste des synonymes
-            let foundCount = 0;
-            step.k.forEach(key => {
-                if(cleanText.includes(key)) {
-                    foundCount++;
-                }
-            });
-
-            if(foundCount >= 1) { // Au moins un mot du lexique trouvé
-                this.updateHint("Étape validée. Passage à la suite...");
-                this.nextStep(s);
-            } else {
-                this.state.err++;
-                this.state.score = Math.max(0, this.state.score - 2);
-                this.provideHint(step);
-            }
-            this.updateKPIs();
-        },
-
-        nextStep(s) {
-            const currentStepData = s.steps[this.state.step];
-            this.state.step++;
-            if(this.state.step < s.steps.length) {
-                this.updateWorkflow(s);
-                setTimeout(() => {
-                    this.addMsg('client', currentStepData.r);
-                    this.speak(currentStepData.r);
-                }, 800);
-            } else {
-                this.stop("SÉANCE TERMINÉE. Score final : " + this.state.score + "%");
-            }
-        },
-
-        provideHint(step) {
-            const txt = document.getElementById('hint-text');
-            // Aide contextuelle : donne des exemples de mots à utiliser
-            txt.innerHTML = `<span class="text-blue-600 font-bold">Conseil :</span> ${step.h}<br>
-                             <span class="text-[10px] text-slate-400">Essayez : ${step.k.slice(0,3).join(', ')}...</span>`;
-        },
-
-        updateWorkflow(s) {
-            document.getElementById('script-steps').innerHTML = s.steps.map((step, i) => `
-                <div class="p-3 rounded-xl border text-xs transition-all ${i === this.state.step ? 'step-active shadow-sm' : (i < this.state.step ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-60' : 'bg-white opacity-40')}">
-                    <div class="flex justify-between items-center">
-                        <b>${step.l}</b>
-                        ${i < this.state.step ? '<span>✅</span>' : (i === this.state.step ? '<span class="animate-pulse">🎙️</span>' : '')}
-                    </div>
+    <main class="flex-grow grid grid-cols-12 gap-4 p-4 overflow-hidden">
+        <div class="col-span-3 flex flex-col gap-4 overflow-hidden">
+            <section class="glass-panel rounded-2xl p-4 flex flex-col shadow-sm">
+                <label class="text-[10px] font-bold text-slate-500 uppercase mb-2">Module de Formation</label>
+                <select id="scSelect" onchange="Manager.loadScenario()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-semibold outline-none"></select>
+                <div class="mt-6 flex-grow overflow-y-auto">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Fiche CRM</h3>
+                    <div id="crm-content" class="text-sm text-slate-600 bg-amber-50/50 p-4 rounded-xl border border-amber-100"></div>
                 </div>
-            `).join('');
-        },
+            </section>
+            <section class="glass-panel rounded-2xl p-4 flex-grow shadow-sm">
+                <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Données Back-Office</h3>
+                <div id="bo-content"></div>
+            </section>
+        </div>
 
-        toggleCall() { if(!this.state.active) this.start(); else this.stop(); },
-        stop(msg) {
-            this.state.active = false;
-            clearInterval(this.state.timerInt);
-            this.rec.stop();
-            if(msg) { this.addMsg('system', msg); this.speak(msg); }
-            document.getElementById('btn-text').innerText = "DÉMARRER LA SESSION";
-            document.getElementById('mainBtn').className = "px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2";
-            document.getElementById('voice-indicator').classList.remove('animate-ping');
-        },
-        reset() {
-            this.state = { step: 0, err: 0, score: 100, active: false, timer: 0, timerInt: null, checks: {}, lastInput: 0 };
-            document.getElementById('call-log').innerHTML = "";
-            this.updateKPIs();
-            document.getElementById('hint-text').innerText = "Sélectionnez un cas et lancez l'appel.";
-        },
-        addMsg(type, t) {
-            const log = document.getElementById('call-log');
-            const label = type === 'agent' ? 'Vous' : (type === 'system' ? 'Coach' : 'Client');
-            log.innerHTML += `<div class="bubble bubble-${type} shadow-sm"><p class="text-[9px] font-extrabold uppercase opacity-50 mb-1">${label}</p>${t}</div>`;
-            log.scrollTop = log.scrollHeight;
-        },
-        speak(t) {
-            const u = new SpeechSynthesisUtterance(t);
-            u.lang = 'fr-FR'; u.rate = 1.0;
-            this.synth.speak(u);
-        },
-        updateKPIs() {
-            document.getElementById('timer').innerText = this.formatTime(this.state.timer);
-            document.getElementById('score-val').innerText = this.state.score + "%";
-            document.getElementById('err-val').innerText = this.state.err;
-        },
-        formatTime(s) { return Math.floor(s/60).toString().padStart(2,'0') + ":" + (s%60).toString().padStart(2,'0'); }
-    };
+        <div class="col-span-6 flex flex-col gap-4 overflow-hidden">
+            <div id="mentor-box" class="glass-panel rounded-2xl p-4 flex items-center gap-4 border-l-4 border-l-blue-500">
+                <div class="text-2xl">🎓</div>
+                <div>
+                    <p class="text-[10px] font-bold text-blue-600 uppercase">Coach en direct</p>
+                    <p id="hint-text" class="text-sm text-slate-700 font-medium italic">Prêt ? Choisissez un module.</p>
+                </div>
+            </div>
+            <div class="glass-panel rounded-2xl flex-grow flex flex-col shadow-inner overflow-hidden bg-white/50">
+                <div id="call-log" class="flex-grow p-6 overflow-y-auto flex flex-col"></div>
+                <div class="p-4 bg-white border-t flex items-center justify-between gap-4">
+                    <div class="flex-grow">
+                        <p id="transcription-preview" class="text-slate-400 italic text-sm">En attente du signal...</p>
+                    </div>
+                    <button id="mainBtn" onclick="Core.toggleCall()" class="px-8 py-4 bg-emerald-500 text-white font-extrabold rounded-xl shadow-lg hover:bg-emerald-600 transition-all active:scale-95">
+                        DÉMARRER LA SESSION
+                    </button>
+                </div>
+            </div>
+        </div>
 
-    window.onload = () => {
-        Manager.generate();
-        const sel = document.getElementById('scSelect');
-        Manager.scenarios.forEach(s => {
-            const o = document.createElement('option');
-            o.value = s.id; o.innerText = s.title;
-            sel.appendChild(o);
-        });
-        Manager.loadScenario();
-        Core.init();
-    };
-</script>
+        <div class="col-span-3">
+            <section class="glass-panel rounded-2xl p-4 h-full shadow-sm flex flex-col">
+                <h3 class="text-xs font-bold text-slate-700 uppercase mb-4">Étapes de l'appel</h3>
+                <div id="script-steps" class="flex-grow space-y-2 overflow-y-auto"></div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const Manager = {
+            scenarios: [],
+            lexique: {
+                accueil: ["bonjour", "bienvenue", "enchanté", "lk", "aider", "service", "écoute", "allo"],
+                empathie: ["comprends", "navré", "désolé", "excuse", "regrette", "rassurez", "entends"],
+                action: ["vérifie", "dossier", "regarde", "instant", "attente", "recherche", "consulte", "fichier"],
+                solution: ["trouvé", "solution", "parce que", "expliquer", "voici", "résolu", "fait"],
+                cloture: ["autre", "besoin", "aidé", "revoir", "journée", "merci", "disposition"]
+            },
+            generate() {
+                const types = ["Support FAI", "E-Commerce", "Assurance", "Médical"];
+                for(let i=1; i<=40; i++) {
+                    const t = types[i % 4];
+                    this.scenarios.push({
+                        id: i, title: `MODULE ${i} : ${t}`,
+                        crm: `<b>Client :</b> M. ${['Rakoto','Andria','Silva','Dupont'][i%4]}<br><b>Objet :</b> Problème technique sur dossier #${1000+i}.`,
+                        bo: { ref: `REF-${2000+i}`, info: "Action requise sur la base de données.", detail: "Urgence Niveau 1" },
+                        steps: [
+                            { l: "Accueil", k: this.lexique.accueil, h: "Saluez le client poliment.", r: "Bonjour, je vous appelle car rien ne marche !" },
+                            { l: "Empathie", k: this.lexique.empathie, h: "Montrez que vous comprenez sa gêne.", r: "C'est bien gentil, mais ça fait 3 jours..." },
+                            { l: "Action", k: this.lexique.action, h: "Proposez de vérifier son dossier.", r: "D'accord, j'attends votre retour." },
+                            { l: "Résolution", k: this.lexique.solution, h: "Annoncez que c'est réglé ou en cours.", r: "Ah, c'est une excellente nouvelle !" },
+                            { l: "Prise de congé", k: this.lexique.cloture, h: "Vérifiez si tout est OK avant de quitter.", r: "C'est tout pour moi, merci. Bonne journée !" }
+                        ]
+                    });
+                }
+            },
+            loadScenario() {
+                const s = this.scenarios.find(x => x.id == document.getElementById('scSelect').value);
+                document.getElementById('crm-content').innerHTML = s.crm;
+                document.getElementById('bo-content').innerHTML = `<div class="p-3 bg-slate-100 rounded-lg text-xs"><b>${s.bo.ref}</b><br>${s.bo.info}</div>`;
+                Core.reset();
+            }
+        };
+
+        const Core = {
+            state: { step: 0, score: 100, err: 0, active: false, timer: 0, lastTalk: 0 },
+            rec: null,
+            synth: window.speechSynthesis,
+            
+            init() {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if(!SR) return alert("Micro non supporté.");
+                this.rec = new SR();
+                this.rec.lang = 'fr-FR'; this.rec.continuous = true; this.rec.interimResults = true;
+                this.rec.onresult = (e) => {
+                    let t = "";
+                    for (let i = e.resultIndex; i < e.results.length; ++i) {
+                        t = e.results[i][0].transcript;
+                        if (e.results[i].isFinal) this.validate(t);
+                        else document.getElementById('transcription-preview').innerText = t;
+                    }
+                };
+            },
+
+            start() {
+                if(!this.rec) this.init();
+                this.state.active = true;
+                this.state.lastTalk = 0;
+                document.getElementById('mainBtn').innerText = "RACCROCHER";
+                document.getElementById('mainBtn').className = "px-8 py-4 bg-rose-500 text-white font-extrabold rounded-xl shadow-lg transition-all";
+                this.rec.start();
+                this.timerInt = setInterval(() => {
+                    this.state.timer++;
+                    this.state.lastTalk++;
+                    this.updateUI();
+                    if(this.state.lastTalk > 12) this.clientRelance();
+                }, 1000);
+                this.updateWorkflow();
+            },
+
+            clientRelance() {
+                const r = ["Allô ? Vous m'entendez ?", "Je suis toujours en ligne...", "Il y a quelqu'un ?"];
+                const msg = r[Math.floor(Math.random()*r.length)];
+                this.addMsg('client', msg);
+                this.speak(msg);
+                this.state.lastTalk = 0;
+                this.state.score = Math.max(0, this.state.score - 5);
+            },
+
+            validate(text) {
+                this.state.lastTalk = 0;
+                this.addMsg('agent', text);
+                const s = Manager.scenarios.find(x => x.id == document.getElementById('scSelect').value);
+                const step = s.steps[this.state.step];
+                const clean = text.toLowerCase();
+                
+                const found = step.k.some(key => clean.includes(key));
+
+                if(found) {
+                    this.state.step++;
+                    if(this.state.step < s.steps.length) {
+                        this.updateWorkflow();
+                        setTimeout(() => {
+                            this.addMsg('client', step.r);
+                            this.speak(step.r);
+                        }, 800);
+                    } else {
+                        this.stop("Bravo ! Session réussie.");
+                    }
+                } else {
+                    this.state.err++;
+                    this.state.score = Math.max(0, this.state.score - 3);
+                    document.getElementById('hint-text').innerHTML = `<b class="text-rose-500">Mots attendus :</b> ${step.k.slice(0,3).join(', ')}...`;
+                }
+            },
+
+            stop(m) {
+                this.state.active = false;
+                clearInterval(this.timerInt);
+                this.rec.stop();
+                if(m) { this.addMsg('system', m); this.speak(m); }
+                document.getElementById('mainBtn').innerText = "DÉMARRER LA SESSION";
+                document.getElementById('mainBtn').className = "px-8 py-4 bg-emerald-500 text-white font-extrabold rounded-xl shadow-lg transition-all";
+            },
+
+            toggleCall() { this.state.active ? this.stop() : this.start(); },
+            reset() { this.state = { step: 0, score: 100, err: 0, active: false, timer: 0, lastTalk: 0 }; document.getElementById('call-log').innerHTML = ""; this.updateUI(); this.updateWorkflow(); },
+            addMsg(type, t) { const l = document.getElementById('call-log'); l.innerHTML += `<div class="bubble bubble-${type}">${t}</div>`; l.scrollTop = l.scrollHeight; },
+            speak(t) { const u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR'; this.synth.speak(u); },
+            updateUI() {
+                document.getElementById('timer').innerText = Math.floor(this.state.timer/60).toString().padStart(2,'0') + ":" + (this.state.timer%60).toString().padStart(2,'0');
+                document.getElementById('score-val').innerText = this.state.score + "%";
+                document.getElementById('err-val').innerText = this.state.err;
+            },
+            updateWorkflow() {
+                const s = Manager.scenarios.find(x => x.id == document.getElementById('scSelect').value);
+                document.getElementById('script-steps').innerHTML = s.steps.map((st, i) => `
+                    <div class="p-3 rounded-lg border text-xs ${i === this.state.step ? 'step-active' : (i < this.state.step ? 'bg-emerald-50 opacity-50' : 'bg-white')}">
+                        <b>${st.l}</b> ${i < this.state.step ? '✅' : ''}
+                    </div>`).join('');
+                if(s.steps[this.state.step]) document.getElementById('hint-text').innerText = s.steps[this.state.step].h;
+            }
+        };
+
+        window.onload = () => {
+            Manager.generate();
+            const sel = document.getElementById('scSelect');
+            Manager.scenarios.forEach(s => { sel.innerHTML += `<option value="${s.id}">${s.title}</option>`; });
+            Manager.loadScenario();
+        };
+    </script>
+</body>
+</html>
